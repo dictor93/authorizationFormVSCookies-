@@ -3,24 +3,28 @@ const app = express();
 const bodyParser = require("body-parser");
 const jsonParser = bodyParser.json();
 const fs = require('fs');
-var multer = require('multer');
-var upload = multer();
+const multer = require('multer');
+const upload = multer();
+const cookieParser = require('cookie-parser');
+const port = 3001;
+app.use(cookieParser()); 
 app.use(jsonParser);
 app.use(upload.array());
 app.use(bodyParser.urlencoded({
     extended: true
 }));
-const port = 3001;
-const mainHTML = `
+const headHTML = `
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-    <title>Form to file sending</title>
+    <title>Form via cookies</title>
   </head>
-  <body>
+  <body>`;
+var calculatedHead = '';
+const mainHTML = `
     <div class="container">
       <form class="needs-validation" action="/auth" novalidate method="post">
         <div class="form-group">
@@ -61,32 +65,67 @@ const endHTML = `
 `;
 var calculatedHTML = '';
 
-app.post('/auth', upload.array(), function (request, response) {
-    if(!request.body) return response.sendStatus(400);
-    let userData = request.body;
+function checkAuthData(selector){
+  let users = JSON.parse(fs.readFileSync("users.json"));
+  if(selector.usrData){
+    let userData = selector.usrData;
     let userName = userData.userName;
     let userEmail = userData.userEmail;
     let userPWD = userData.userPWD;
-    let users = {};
-    users = JSON.parse(fs.readFileSync("users.json"));
-    for(user in users){
-        if((users[user].name)&&(users[user].eMail)&&(users[user].password)){
-            console.log();
-        }
+    for(let user in users){
+      if((users[user].name==userName)&&(users[user].eMail==userEmail)&&(users[user].password==userPWD)){
+        return users[user];
+      }
     }
+  }
+  if(selector.token){
+    
+    //console.log(selector);
+    for(let user in users){
+      if((users[user].token == selector.token)){
+        return users[user];
+      }
+    }
+  }
+  
+  return -1;
+}
 
-
-    calculatedHTML += `<p style="color:red">Recived something<p>`;
-    response.end(mainHTML + calculatedHTML + endHTML);
+app.post('/auth', upload.array(), function (request, response) {
+    if(!request.body) return response.sendStatus(400);
+    let user = checkAuthData({usrData:request.body});
+    if( user != -1){
+      response.cookie('token',user.token);
+      calculatedHead = `You signed in as ${user.name}`;
+      calculatedHTML = `<a style="color:red" href="/logout">Log out<a>`;
+    }else{
+      calculatedHTML = `<p style="color:red" >Invalid login or password<p>`;
+    }
+    
+    
+    response.end(headHTML + calculatedHead + mainHTML + calculatedHTML + endHTML);
     
 });
 
 app.get('',jsonParser,function(request,response){
-    response.end(mainHTML + endHTML);
+  if(request.cookies.token){
+    let user = checkAuthData({token:request.cookies.token});
+    if(user != -1){
+      calculatedHTML = `<a style="color:red" href="/logout">Log out<a>`;
+      calculatedHead = `You signed in as ${user.name}`;
+    }
+  }
+  
+
+  //calculatedHTML = '';
+  response.end(headHTML + calculatedHead + mainHTML + calculatedHTML + endHTML);
 });
 
 app.get('/logout',jsonParser,function(request,response){
     response.cookie('token', null, { expires: new Date(Date.now() - 1)});
+    calculatedHead = '';
+    calculatedHTML = '';
+    response.end(headHTML + calculatedHead + mainHTML + calculatedHTML + endHTML);
 });
 
 app.listen(port);
