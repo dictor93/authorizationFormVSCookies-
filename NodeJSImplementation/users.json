@@ -1,0 +1,20 @@
+{
+    "u1":{
+        "name":"user1",
+        "eMail":"user1@mail.com",
+        "password":"user1pwd",
+        "token":"fghsfhnh"
+    },
+    "u2":{
+        "name":"user2",
+        "eMail":"user2@mail.com",
+        "password":"user2pwd",
+        "token":"shsdfhs"
+    },
+    "u3":{
+        "name":"user3",
+        "eMail":"user3@mail.com",
+        "password":"user3pwd",
+        "token":"rlvposdf"
+    }
+}
